@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IMAGE="claude-code:latest"
+
+# Portable alternative to readlink -f (which is unavailable on macOS)
+resolve_path() {
+    local target="$1"
+    cd "$(dirname "$target")"
+    target="$(basename "$target")"
+    while [[ -L "$target" ]]; do
+        target="$(readlink "$target")"
+        cd "$(dirname "$target")"
+        target="$(basename "$target")"
+    done
+    echo "$(pwd -P)/$target"
+}
+SCRIPT_DIR="$(dirname "$(resolve_path "${BASH_SOURCE[0]}")")"
+
+# Build the image if it doesn't exist or if --build is passed
+if [[ "${1:-}" == "--build" ]]; then
+    shift
+    docker build --no-cache -f "$SCRIPT_DIR/Dockerfile" -t "$IMAGE" "$SCRIPT_DIR"
+elif ! docker image inspect "$IMAGE" &>/dev/null; then
+    echo "Image $IMAGE not found. Building..." >&2
+    docker build -f "$SCRIPT_DIR/Dockerfile" -t "$IMAGE" "$SCRIPT_DIR"
+fi
+
+# Detect OS — on macOS, Docker Desktop's Linux VM handles file ownership
+# transparently, so we skip UID/GID and group mapping.
+OS="$(uname -s)"
+USER_ARGS=()
+if [[ "$OS" != "Darwin" ]]; then
+    USER_ARGS+=(-u "$(id -u):$(id -g)")
+    for gid in $(id -G); do
+        USER_ARGS+=(--group-add "$gid")
+    done
+fi
+
+CLAUDE_JSON_ARGS=()
+if [[ -f "$HOME/.claude.json" ]]; then
+    CLAUDE_JSON_ARGS+=(-v "$HOME/.claude.json:$HOME/.claude.json")
+fi
+
+exec docker run --rm -it \
+    "${USER_ARGS[@]}" \
+    -v "$(pwd):$(pwd)" \
+    -w "$(pwd)" \
+    -e HOME="$HOME" \
+    -e USER="${USER:-$(id -un)}" \
+    ${ANTHROPIC_API_KEY:+-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
+    ${CLAUDE_CODE_OAUTH_TOKEN:+-e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN"} \
+    -v "$HOME/.claude:$HOME/.claude" \
+    "${CLAUDE_JSON_ARGS[@]}" \
+    "$IMAGE" \
+    "$@"
