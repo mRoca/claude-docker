@@ -1,6 +1,8 @@
 # claude-docker
 
-Run [Claude Code](https://github.com/anthropics/claude-code) inside a Docker container — better than the /sandbox mode.
+Run [Claude Code](https://github.com/anthropics/claude-code) with all permissions inside a Docker container — better than the /sandbox mode.
+
+Why? **Because I don't want to grant a new permission every single minute, but I also don't want Claude Code to have access to my entire system.**
 
 Claude Code is an AI coding assistant that runs in your terminal. It can read, write, and execute code on your machine.
 That's powerful, but it means a mistake could affect your whole system — install a broken package, overwrite a config file, remove your home directory, etc.
