@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE="claude-code:latest"
+IMAGE="claude-docker:latest"
 
 # Portable alternative to readlink -f (which is unavailable on macOS)
 resolve_path() {
