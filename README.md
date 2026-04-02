@@ -59,7 +59,7 @@ claude-docker --model sonnet "explain this codebase"
 claude-docker --build
 ```
 
-All arguments after an optional leading `--build` are forwarded directly to `claude`.
+`--build` rebuilds the image and exits. All other arguments are forwarded directly to `claude`.
 
 ## Authentication
 
@@ -68,7 +68,7 @@ The wrapper supports two methods:
 | Method | How |
 |---|---|
 | **OAuth (recommended)** | Run `claude` or `claude-docker` once — it opens a browser (or ask you doing it) for OAuth login and stores the session in `~/.claude`. The wrapper mounts this directory into the container automatically. No API key needed. |
-| **OAuth token** | Set `CLAUDE_CODE_OAUTH_TOKEN` — passed through to the container when present. Useful in CI or headless environments where browser login isn't possible. |
+| **OAuth token** | Set `CLAUDE_CODE_OAUTH_TOKEN` — passed through to the container when present. Useful in CI or headless environments where browser login isn't possible. Create it with `claude setup-token` |
 | **API key** | Set `ANTHROPIC_API_KEY` — it is passed through to the container when present. |
 
 ## Security considerations
@@ -95,7 +95,7 @@ The wrapper supports two methods:
 | Python | python3, pip, venv |
 | Build | build-essential |
 | SSH | openssh-client |
-| AI | @anthropic-ai/claude-code (global npm) |
+| AI | claude (official installer) |
 
 ## License
 

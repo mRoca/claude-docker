@@ -21,6 +21,7 @@ SCRIPT_DIR="$(dirname "$(resolve_path "${BASH_SOURCE[0]}")")"
 if [[ "${1:-}" == "--build" ]]; then
     shift
     docker build --no-cache -f "$SCRIPT_DIR/Dockerfile" -t "$IMAGE" "$SCRIPT_DIR"
+    exit 0
 elif ! docker image inspect "$IMAGE" &>/dev/null; then
     echo "Image $IMAGE not found. Building..." >&2
     docker build -f "$SCRIPT_DIR/Dockerfile" -t "$IMAGE" "$SCRIPT_DIR"

@@ -44,6 +44,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && rm -rf /var/lib/apt/lists/*
 
 # Claude Code
-RUN npm install -g @anthropic-ai/claude-code
+ENV PATH="/root/.local/bin:$PATH"
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 ENTRYPOINT ["claude", "--dangerously-skip-permissions", "--append-system-prompt", "You are running inside a Docker container, not directly on the host machine. The current project directory is mounted from the host filesystem."]
