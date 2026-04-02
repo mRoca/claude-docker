@@ -37,6 +37,9 @@ if [[ "$OS" != "Darwin" ]]; then
     done
 fi
 
+# Let's persist the claude files or share the existing config
+mkdir -p "$HOME/.claude"
+
 CLAUDE_JSON_ARGS=()
 if [[ -f "$HOME/.claude.json" ]]; then
     CLAUDE_JSON_ARGS+=(-v "$HOME/.claude.json:$HOME/.claude.json")
