@@ -17,6 +17,13 @@ resolve_path() {
 }
 SCRIPT_DIR="$(dirname "$(resolve_path "${BASH_SOURCE[0]}")")"
 
+# Load local config (gitignored); fall back to defaults
+CLIPBOARD_FORWARDING=false
+if [[ -f "$SCRIPT_DIR/claude-docker.env" ]]; then
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/claude-docker.env"
+fi
+
 # Build the image if it doesn't exist or if --build is passed
 if [[ "${1:-}" == "--build" ]]; then
     shift
@@ -46,6 +53,31 @@ if [[ -f "$HOME/.claude.json" ]]; then
     CLAUDE_JSON_ARGS+=(-v "$HOME/.claude.json:$HOME/.claude.json")
 fi
 
+# Clipboard forwarding so Ctrl+V image paste works inside the container
+CLIPBOARD_ARGS=()
+if [[ "$CLIPBOARD_FORWARDING" == "true" && "$OS" != "Darwin" ]]; then
+    if [[ -n "${WAYLAND_DISPLAY:-}" && -n "${XDG_RUNTIME_DIR:-}" ]]; then
+        # Wayland: mount the socket so wl-paste can reach it
+        CLIPBOARD_ARGS+=(
+            -e WAYLAND_DISPLAY="$WAYLAND_DISPLAY"
+            -e XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR"
+            -v "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+        )
+    elif [[ -n "${DISPLAY:-}" ]]; then
+        # X11: forward display + authority file so xclip can reach the X server
+        CLIPBOARD_ARGS+=(
+            -e DISPLAY="$DISPLAY"
+            -v /tmp/.X11-unix:/tmp/.X11-unix
+        )
+        if [[ -f "${XAUTHORITY:-$HOME/.Xauthority}" ]]; then
+            CLIPBOARD_ARGS+=(
+                -e XAUTHORITY="${XAUTHORITY:-$HOME/.Xauthority}"
+                -v "${XAUTHORITY:-$HOME/.Xauthority}:${XAUTHORITY:-$HOME/.Xauthority}"
+            )
+        fi
+    fi
+fi
+
 exec docker run --rm -it \
     "${USER_ARGS[@]}" \
     -v "$(pwd):$(pwd)" \
@@ -56,5 +88,6 @@ exec docker run --rm -it \
     ${CLAUDE_CODE_OAUTH_TOKEN:+-e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN"} \
     -v "$HOME/.claude:$HOME/.claude" \
     "${CLAUDE_JSON_ARGS[@]}" \
+    "${CLIPBOARD_ARGS[@]}" \
     "$IMAGE" \
     "$@"

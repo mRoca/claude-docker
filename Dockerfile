@@ -29,6 +29,8 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     sudo \
     locales \
+    xclip \
+    wl-clipboard \
     && ln -sf /usr/bin/batcat /usr/local/bin/bat \
     && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
     && rm -rf /var/lib/apt/lists/*

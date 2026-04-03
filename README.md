@@ -61,6 +61,18 @@ claude-docker --build
 
 `--build` rebuilds the image and exits. All other arguments are forwarded directly to `claude`.
 
+## Configuration
+
+Copy `claude-docker.env.dist` to `claude-docker.env` (gitignored) and uncomment the options you want:
+
+```bash
+cp claude-docker.env.dist claude-docker.env
+```
+
+| Variable | Default | Description |
+|---|---|---|
+| `CLIPBOARD_FORWARDING` | `false` | Forward the display server socket so Ctrl+V image paste works inside the container. See the security note in the config file. |
+
 ## Authentication
 
 The wrapper supports two methods:
@@ -92,6 +104,7 @@ The wrapper supports two methods:
 | Editors | vim |
 | System | htop, lsof, procps, psmisc |
 | Network | netcat, dnsutils, ping |
+| Clipboard | xclip (X11), wl-clipboard (Wayland) |
 | Python | python3, pip, venv |
 | Build | build-essential |
 | SSH | openssh-client |
