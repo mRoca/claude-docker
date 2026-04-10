@@ -45,8 +45,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Claude Code
-ENV PATH="/root/.local/bin:$PATH"
-RUN curl -fsSL https://claude.ai/install.sh | bash
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-ENTRYPOINT ["claude", "--dangerously-skip-permissions", "--append-system-prompt", "You are running inside a Docker container, not directly on the host machine. The current project directory is mounted from the host filesystem."]
+ENTRYPOINT ["/entrypoint.sh"]
