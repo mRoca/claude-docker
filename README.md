@@ -15,6 +15,7 @@ Think of it as giving Claude its own workspace where it can do its job without b
 - **Runs as your UID/GID** so file ownership stays correct
 - **Ephemeral container** — nothing persists outside your project and config directories
 - **Full dev toolset** included (git, gh, ripgrep, python3, build-essential, …)
+- **Auto token refresh** — detects expiring OAuth tokens before launch and refreshes them on the host
 
 ## How it compares
 

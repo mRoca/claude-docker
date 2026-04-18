@@ -78,6 +78,26 @@ if [[ "$CLIPBOARD_FORWARDING" == "true" && "$OS" != "Darwin" ]]; then
     fi
 fi
 
+# If the OAuth token expires within the next hour, trigger a host-side refresh
+# before launching. The container has no keychain access and cannot refresh
+# tokens itself — only the host claude binary can reach the system keychain.
+if [[ -f "$HOME/.claude/.credentials.json" ]]; then
+    _exp_ms=$(grep -o '"expiresAt":[0-9]*' "$HOME/.claude/.credentials.json" 2>/dev/null | head -1 | cut -d: -f2)
+    _expires_in=$(( ${_exp_ms:-0} / 1000 - $(date +%s) ))
+    if (( _expires_in < 3600 )); then
+        if command -v claude &>/dev/null; then
+            echo "OAuth token expires in $((_expires_in/60))m — refreshing on host..." >&2
+            if claude -p "reply with exactly: token refresh ok" 2>/dev/null; then
+                echo "Token refreshed successfully." >&2
+            else
+                echo "Warning: token refresh failed — you may get 401 errors." >&2
+            fi
+        else
+            echo "Warning: OAuth token expires in $((_expires_in/60))m and claude is not installed on this host — you may get 401 errors." >&2
+        fi
+    fi
+fi
+
 exec docker run --rm -it \
     "${USER_ARGS[@]}" \
     -v "$(pwd):$(pwd)" \
