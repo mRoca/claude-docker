@@ -34,16 +34,15 @@ elif ! docker image inspect "$IMAGE" &>/dev/null; then
     docker build -f "$SCRIPT_DIR/Dockerfile" -t "$IMAGE" "$SCRIPT_DIR"
 fi
 
-# Detect OS — on macOS, Docker Desktop's Linux VM handles file ownership
-# transparently, so we skip UID/GID and group mapping.
+# Always pass host UID/GID to the container.
+# macOS (OrbStack/Docker Desktop) handles user mapping transparently, so -u is not strictly
+# needed there, but empty array expansion fails with set -euo pipefail.
+# So USER_ARGS is always populated for consistency and to avoid expansion errors on all platforms.
 OS="$(uname -s)"
-USER_ARGS=()
-if [[ "$OS" != "Darwin" ]]; then
-    USER_ARGS+=(-u "$(id -u):$(id -g)")
-    for gid in $(id -G); do
-        USER_ARGS+=(--group-add "$gid")
-    done
-fi
+USER_ARGS=(-u "$(id -u):$(id -g)")
+for gid in $(id -G); do
+    USER_ARGS+=(--group-add "$gid")
+done
 
 # Let's persist the claude files or share the existing config
 mkdir -p "$HOME/.claude"
@@ -99,7 +98,7 @@ if [[ -f "$HOME/.claude/.credentials.json" ]]; then
 fi
 
 exec docker run --rm -it \
-    "${USER_ARGS[@]}" \
+     ${USER_ARGS[@]+"${USER_ARGS[@]}"} \
     -v "$(pwd):$(pwd)" \
     -w "$(pwd)" \
     -e HOME="$HOME" \
@@ -107,7 +106,7 @@ exec docker run --rm -it \
     ${ANTHROPIC_API_KEY:+-e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY"} \
     ${CLAUDE_CODE_OAUTH_TOKEN:+-e CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN"} \
     -v "$HOME/.claude:$HOME/.claude" \
-    "${CLAUDE_JSON_ARGS[@]}" \
-    "${CLIPBOARD_ARGS[@]}" \
+    ${CLAUDE_JSON_ARGS[@]+"${CLAUDE_JSON_ARGS[@]}"} \
+    ${CLIPBOARD_ARGS[@]+"${CLIPBOARD_ARGS[@]}"} \
     "$IMAGE" \
     "$@"
