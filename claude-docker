@@ -86,7 +86,7 @@ if [[ -f "$HOME/.claude/.credentials.json" ]]; then
     if (( _expires_in < 3600 )); then
         if command -v claude &>/dev/null; then
             echo "OAuth token expires in $((_expires_in/60))m — refreshing on host..." >&2
-            if claude -p "reply with exactly: token refresh ok" 2>/dev/null; then
+            if claude -p "reply with exactly: token refresh ok" </dev/null >/dev/null 2>&1; then
                 echo "Token refreshed successfully." >&2
             else
                 echo "Warning: token refresh failed — you may get 401 errors." >&2

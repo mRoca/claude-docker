@@ -32,7 +32,11 @@ if [[ -z "$CLAUDE_BIN" || ! -x "$CLAUDE_BIN" ]]; then
     chmod +x "$CLAUDE_BIN"
 fi
 
+# --strict-mcp-config disables MCP auto-discovery. Required because claude.ai-managed
+# remote MCP servers (Notion, Slack, etc.) need OAuth tokens from the host keychain,
+# which the container can't reach — without this, claude exits silently at startup.
 exec "$CLAUDE_BIN" \
     --dangerously-skip-permissions \
+    --strict-mcp-config \
     --append-system-prompt "You are running inside a Docker container, not directly on the host machine. The current project directory is mounted from the host filesystem." \
     "$@"
