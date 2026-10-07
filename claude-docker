@@ -77,6 +77,53 @@ if [[ "$CLIPBOARD_FORWARDING" == "true" && "$OS" != "Darwin" ]]; then
     fi
 fi
 
+# macOS has no display socket to forward: run a host-side bridge instead that
+# answers the container's xclip shim with the clipboard image (images only).
+# Ctrl+V: xclip-shim.sh writes <id>.req, this loop answers <id>.png or <id>.none.
+# The bridge dir lives under ~/.claude, which is already mounted. The container
+# runs with your UID, so both sides can create and delete the request/response files.
+CLIPBOARD_BRIDGE_PID=""
+CLIPBOARD_BRIDGE_DIR=""
+if [[ "$CLIPBOARD_FORWARDING" == "true" && "$OS" == "Darwin" ]]; then
+    mkdir -p "$HOME/.claude/docker"
+    CLIPBOARD_BRIDGE_DIR="$(mktemp -d "$HOME/.claude/docker/clipboard.XXXXXX")"
+    (
+        wrapper_pid=$$
+        while kill -0 "$wrapper_pid" 2>/dev/null; do
+            for req in "$CLIPBOARD_BRIDGE_DIR"/*.req; do
+                [[ -e "$req" ]] || continue
+                id="$(basename "$req" .req)"
+                rm -f "$req"
+                # «class PNGf» converts any clipboard image to PNG; fails if none.
+                # Written to .tmp then renamed so the shim never reads a partial file.
+                if osascript \
+                    -e 'on run argv' \
+                    -e 'set img to the clipboard as «class PNGf»' \
+                    -e 'set f to open for access (POSIX file (item 1 of argv)) with write permission' \
+                    -e 'write img to f' \
+                    -e 'close access f' \
+                    -e 'end run' \
+                    "$CLIPBOARD_BRIDGE_DIR/$id.tmp" >/dev/null 2>&1; then
+                    mv "$CLIPBOARD_BRIDGE_DIR/$id.tmp" "$CLIPBOARD_BRIDGE_DIR/$id.png"
+                else
+                    rm -f "$CLIPBOARD_BRIDGE_DIR/$id.tmp"
+                    : > "$CLIPBOARD_BRIDGE_DIR/$id.none"
+                fi
+            done
+            sleep 0.1
+        done
+    ) &
+    CLIPBOARD_BRIDGE_PID=$!
+    CLIPBOARD_ARGS+=(-e CLAUDE_DOCKER_CLIPBOARD_DIR="$CLIPBOARD_BRIDGE_DIR")
+fi
+
+cleanup_clipboard_bridge() {
+    [[ -n "$CLIPBOARD_BRIDGE_PID" ]] && kill "$CLIPBOARD_BRIDGE_PID" 2>/dev/null
+    [[ -n "$CLIPBOARD_BRIDGE_DIR" ]] && rm -rf "$CLIPBOARD_BRIDGE_DIR"
+    return 0
+}
+trap cleanup_clipboard_bridge EXIT
+
 # If the OAuth token expires within the next hour, trigger a host-side refresh
 # before launching. The container has no keychain access and cannot refresh
 # tokens itself — only the host claude binary can reach the system keychain.
@@ -100,8 +147,9 @@ if [[ -f "$HOME/.claude/.credentials.json" ]]; then
     fi
 fi
 
-exec docker run --rm -it \
-     ${USER_ARGS[@]+"${USER_ARGS[@]}"} \
+# Not exec'd: the wrapper must outlive the container to clean up the bridge
+docker run --rm -it \
+    ${USER_ARGS[@]+"${USER_ARGS[@]}"} \
     -v "$(pwd):$(pwd)" \
     -w "$(pwd)" \
     -e HOME="$HOME" \

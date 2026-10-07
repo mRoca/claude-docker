@@ -45,6 +45,10 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
+# xclip shim: relays clipboard images from macOS hosts (see xclip-shim.sh)
+COPY xclip-shim.sh /usr/local/bin/xclip
+RUN chmod +x /usr/local/bin/xclip
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

@@ -72,7 +72,7 @@ cp claude-docker.env.dist claude-docker.env
 
 | Variable | Default | Description |
 |---|---|---|
-| `CLIPBOARD_FORWARDING` | `false` | Forward the display server socket so Ctrl+V image paste works inside the container. See the security note in the config file. |
+| `CLIPBOARD_FORWARDING` | `false` | Enable Ctrl+V image paste inside the container. On Linux, forwards the X11/Wayland socket; on macOS, runs a host-side bridge that relays clipboard images only (via `osascript`). See the security note in the config file. |
 
 ## Authentication
 
@@ -105,7 +105,7 @@ The wrapper supports two methods:
 | Editors | vim |
 | System | htop, lsof, procps, psmisc |
 | Network | netcat, dnsutils, ping |
-| Clipboard | xclip (X11), wl-clipboard (Wayland) |
+| Clipboard | xclip (X11), wl-clipboard (Wayland), xclip shim (macOS image bridge) |
 | Python | python3, pip, venv |
 | Build | build-essential |
 | SSH | openssh-client |
