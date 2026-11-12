@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# GCS_BUCKET value from https://claude.ai/install.sh
-GCS="https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases"
+# Same download endpoint as https://claude.ai/install.sh
+DOWNLOAD_BASE_URL="https://downloads.claude.ai/claude-code-releases"
 
 VERSIONS_DIR="$HOME/.claude/docker/versions"
 mkdir -p "$VERSIONS_DIR"
@@ -13,13 +13,15 @@ case "$(uname -m)" in
     *) echo "Unsupported arch: $(uname -m)" >&2; exit 1 ;;
 esac
 
-_latest=$(curl -sf --max-time 5 "$GCS/latest" 2>/dev/null || true)
+_latest=$(curl -sf --connect-timeout 2 --max-time 3 "$DOWNLOAD_BASE_URL/latest" 2>/dev/null || true)
+# Reject anything that isn't a version string (e.g. an HTML error page)
+[[ "$_latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[^[:space:]]+)?$ ]] || _latest=""
 
 if [[ -n "$_latest" ]]; then
     CLAUDE_BIN="$VERSIONS_DIR/$_latest"
 else
     # Offline fallback: use the most recently downloaded version
-    CLAUDE_BIN=$(find "$VERSIONS_DIR" -maxdepth 1 -type f | sort -V | tail -1)
+    CLAUDE_BIN=$(find "$VERSIONS_DIR" -maxdepth 1 -type f -perm -u+x | sort -V | tail -1)
 fi
 
 if [[ -z "$CLAUDE_BIN" || ! -x "$CLAUDE_BIN" ]]; then
@@ -28,8 +30,18 @@ if [[ -z "$CLAUDE_BIN" || ! -x "$CLAUDE_BIN" ]]; then
         exit 1
     fi
     echo "Downloading Claude Code $_latest..." >&2
-    curl -fL --max-time 300 "$GCS/$_latest/$CLAUDE_PLATFORM/claude" -o "$CLAUDE_BIN"
-    chmod +x "$CLAUDE_BIN"
+    _expected=$(curl -fsSL --max-time 30 "$DOWNLOAD_BASE_URL/$_latest/manifest.json" \
+        | jq -r --arg p "$CLAUDE_PLATFORM" '.platforms[$p].checksum // empty')
+    _tmp="$CLAUDE_BIN.part.$$"
+    trap 'rm -f "$_tmp"' EXIT
+    curl -fL --max-time 300 "$DOWNLOAD_BASE_URL/$_latest/$CLAUDE_PLATFORM/claude" -o "$_tmp"
+    if [[ -z "$_expected" || "$(sha256sum "$_tmp" | cut -d' ' -f1)" != "$_expected" ]]; then
+        echo "Checksum verification failed for Claude Code $_latest." >&2
+        exit 1
+    fi
+    chmod +x "$_tmp"
+    mv "$_tmp" "$CLAUDE_BIN"
+    trap - EXIT
 fi
 
 # --strict-mcp-config disables MCP auto-discovery. Required because claude.ai-managed

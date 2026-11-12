@@ -24,8 +24,12 @@ if [[ -f "$SCRIPT_DIR/claude-docker.env" ]]; then
     source "$SCRIPT_DIR/claude-docker.env"
 fi
 
-# Build the image if it doesn't exist or if --build is passed
-if [[ "${1:-}" == "--build" ]]; then
+# Build the image if it doesn't exist or if --build (or an alias) is passed
+case "${1:-}" in
+    --build|--upgrade|--update|upgrade|update) FORCE_BUILD=true ;;
+    *) FORCE_BUILD=false ;;
+esac
+if [[ "$FORCE_BUILD" == true ]]; then
     shift
     docker build --no-cache -f "$SCRIPT_DIR/Dockerfile" -t "$IMAGE" "$SCRIPT_DIR"
     exit 0
@@ -147,8 +151,12 @@ if [[ -f "$HOME/.claude/.credentials.json" ]]; then
     fi
 fi
 
+TTY_ARGS=()
+[[ -t 0 && -t 1 ]] && TTY_ARGS+=(-t)
+
 # Not exec'd: the wrapper must outlive the container to clean up the bridge
-docker run --rm -it \
+docker run --rm -i ${TTY_ARGS[@]+"${TTY_ARGS[@]}"} \
+    --dns-opt single-request \
     ${USER_ARGS[@]+"${USER_ARGS[@]}"} \
     -v "$(pwd):$(pwd)" \
     -w "$(pwd)" \

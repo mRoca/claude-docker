@@ -60,7 +60,7 @@ claude-docker --model sonnet "explain this codebase"
 claude-docker --build
 ```
 
-`--build` rebuilds the image and exits. All other arguments are forwarded directly to `claude`.
+`--build` rebuilds the image and exits (aliases: `--upgrade`, `--update`, `upgrade`, `update`). All other arguments are forwarded directly to `claude`.
 
 ## Configuration
 
