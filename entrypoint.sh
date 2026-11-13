@@ -44,6 +44,11 @@ if [[ -z "$CLAUDE_BIN" || ! -x "$CLAUDE_BIN" ]]; then
     trap - EXIT
 fi
 
+# Updates are handled above (latest version is fetched on every start). Claude's
+# built-in updater would try to install into ~/.local (not mounted/writable in the
+# container) based on the host's ~/.claude.json, and fail on every launch.
+export DISABLE_AUTOUPDATER=1
+
 # --strict-mcp-config disables MCP auto-discovery. Required because claude.ai-managed
 # remote MCP servers (Notion, Slack, etc.) need OAuth tokens from the host keychain,
 # which the container can't reach — without this, claude exits silently at startup.
